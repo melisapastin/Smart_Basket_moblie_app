@@ -1,5 +1,6 @@
 package com.example.smartbasket
 
+import android.app.Application
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -24,9 +26,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun WalletScreen(
-    walletViewModel: WalletViewModel = viewModel(),
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
+    val walletViewModel: WalletViewModel = viewModel(
+        factory = WalletViewModelFactory(context.applicationContext as Application)
+    )
     val paymentViewModel: PaymentViewModel = viewModel()
 
     Column(

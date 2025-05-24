@@ -17,6 +17,9 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.lifecycle.viewmodel.compose.viewModel
+import android.app.Application
+import android.content.Context
+import androidx.compose.ui.platform.LocalContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,10 +34,15 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AppNavigation() {
+    val context = LocalContext.current
     val (currentScreen, setCurrentScreen) = remember { mutableStateOf<Screen>(Screen.Menu) }
-    val shoppingListViewModel: ShoppingListViewModel = viewModel()
+    val shoppingListViewModel: ShoppingListViewModel = viewModel(
+        factory = ShoppingListViewModelFactory(context.applicationContext as Application)
+    )
     val receiptViewModel: ReceiptViewModel = viewModel()
-    val walletViewModel: WalletViewModel = viewModel()
+    val walletViewModel: WalletViewModel = viewModel(
+        factory = WalletViewModelFactory(context.applicationContext as Application)
+    )
 
     when (currentScreen) {
         Screen.Menu -> MenuScreen(
@@ -56,7 +64,6 @@ fun AppNavigation() {
         )
         Screen.MyWallet -> WalletScreen(
             onBack = { setCurrentScreen(Screen.Menu) },
-            walletViewModel = walletViewModel  // Pass the ViewModel
         )
     }
 }
@@ -73,9 +80,13 @@ sealed class Screen {
 @Composable
 fun PreviewReceiptScreen() {
     SmartBasketTheme {
+        val context = LocalContext.current
+        val shoppingListViewModel: ShoppingListViewModel = viewModel(
+            factory = ShoppingListViewModelFactory(context.applicationContext as Application)
+        )
         ReceiptScreen(
             onBack = {},
-            shoppingListViewModel = ShoppingListViewModel()
+            shoppingListViewModel = shoppingListViewModel
         )
     }
 }

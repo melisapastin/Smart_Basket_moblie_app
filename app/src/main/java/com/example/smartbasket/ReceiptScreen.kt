@@ -22,31 +22,86 @@ import java.text.NumberFormat
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.filled.Done
+import kotlinx.serialization.Serializable
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
+import java.net.HttpURLConnection
+import java.net.URL
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.widget.Toast
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import java.util.*
+
 
 // Mock data class with VAT category
 data class BasketItem(
     val name: String,
-    val price: Double,      // Price without VAT
+    val price: Double,
     val quantity: Int,
+    val category: String  // Added category field
+)
+
+@Serializable
+data class Product(
+    val id: Int,
+    val name: String,
+    val category: String,
+    val price: Double,
+    val weight: Int
 )
 
 // ViewModel to hold items
 class ReceiptViewModel : ViewModel() {
-    val items = listOf(
-        BasketItem("Apple", 1.99, 2),
-        BasketItem("Milk", 3.49, 1),
-        BasketItem("Bread", 2.99, 1),
-        BasketItem("Novel", 14.99, 1),
-        BasketItem("Eggs", 2.49, 12),
-        BasketItem("Butter", 3.99, 2),
-        BasketItem("Cheese", 4.99, 1),
-        BasketItem("Chicken", 8.99, 1),
-        BasketItem("Rice", 5.99, 2),
-        BasketItem("Pasta", 1.99, 3),
-        BasketItem("Tomatoes", 2.99, 6),
-        BasketItem("Potatoes", 3.49, 10)
-    )
+    var items by mutableStateOf<List<BasketItem>>(emptyList())
+        private set
+
+    init {
+        fetchCloudData()
+    }
+
+    private fun fetchCloudData() {
+        viewModelScope.launch {
+            try {
+                val products = withContext(Dispatchers.IO) {
+                    val url = URL("https://smartcart1.blob.core.windows.net/products/recognized_cart.json?sp=r&st=2025-05-07T11:28:08Z&se=2025-06-30T19:28:08Z&spr=https&sv=2024-11-04&sr=b&sig=R21ZlTEcdDbjxQdj23y0dc3vV1NcVH9Df3%2B8%2Bw%2Fc6Ew%3D\n")
+                    val connection = url.openConnection() as HttpURLConnection
+                    connection.apply {
+                        requestMethod = "GET"
+                        connectTimeout = 5000
+                        readTimeout = 5000
+                    }
+
+                    // Fixed: Use connection.responseCode
+                    if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                        // Fixed: Use connection.inputStream
+                        val json = connection.inputStream.bufferedReader().use { it.readText() }
+                        Json.decodeFromString<List<Product>>(json)
+                    } else emptyList()
+                }
+
+                items = products.groupBy { it.id }
+                    .map { (_, items) ->
+                        BasketItem(
+                            name = items.first().name,
+                            price = items.first().price,
+                            quantity = items.size,
+                            category = items.first().category  // Add category here
+                        )
+                    }
+            } catch (e: Exception) {
+                // Handle errors (consider updating UI state here)
+                e.printStackTrace()
+            }
+        }
+    }
 
     val currencyFormat: NumberFormat = NumberFormat.getCurrencyInstance().apply {
         currency = Currency.getInstance("EUR") // Euro formatting
@@ -73,20 +128,12 @@ class ReceiptViewModel : ViewModel() {
     }
 
     fun getCategoryDistribution(): Map<String, Double> {
-        // Mock categories - you would need to add real categories to BasketItem
-        val categories = mapOf(
-            "Fruit" to listOf("Apple"),
-            "Vegetables" to listOf("Tomatoes", "Potatoes"),
-            "Dairy" to listOf("Milk", "Butter", "Cheese"),
-            "Bakery" to listOf("Bread"),
-            "Meat" to listOf("Chicken"),
-            "Other Groceries" to listOf("Rice", "Pasta", "Eggs")
-        )
-
-        return categories.mapValues { (_, items) ->
-            this.items.filter { items.contains(it.name) }
-                .sumOf { it.price * it.quantity }
-        }.filterValues { it > 0 }
+        // Group items by their actual category from Product data
+        return items.groupBy { it.category }
+            .mapValues { (_, items) ->
+                items.sumOf { it.price * it.quantity }
+            }
+            .filterValues { it > 0 }
     }
 }
 
@@ -112,18 +159,23 @@ fun ReceiptScreen(
 
         HeaderSection(paymentViewModel)
 
-        LazyColumn(modifier = Modifier.weight(1f).heightIn(max = 500.dp)) {
-            items(receiptViewModel.items) { item ->
-                val isInShoppingList = shoppingListViewModel.shoppingList.value.any { listItem ->
-                    listItem.name == item.name && item.quantity >= listItem.quantity
-                }
+        if (receiptViewModel.items.isEmpty()) {
+            CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
+        } else {
+            LazyColumn(modifier = Modifier.weight(1f).heightIn(max = 500.dp)) {
+                items(receiptViewModel.items) { item ->
+                    val isInShoppingList =
+                        shoppingListViewModel.shoppingList.value.any { listItem ->
+                            listItem.name == item.name && item.quantity >= listItem.quantity
+                        }
 
-                ReceiptItemRow(
-                    item = item,
-                    currencyFormat = receiptViewModel.currencyFormat,
-                    isInShoppingList = isInShoppingList
-                )
-                Divider(color = Color.LightGray)
+                    ReceiptItemRow(
+                        item = item,
+                        currencyFormat = receiptViewModel.currencyFormat,
+                        isInShoppingList = isInShoppingList
+                    )
+                    Divider(color = Color.LightGray)
+                }
             }
         }
 
@@ -184,50 +236,68 @@ fun ConfirmationDialog(
     walletViewModel: WalletViewModel,
     context: PaymentContext
 ) {
-    val amount = when (context) {
-        PaymentContext.ADD_FUNDS -> viewModel.amountToAdd.toDoubleOrNull() ?: 0.0
-        else -> viewModel.totalAmount
-    }
-    val currencyFormat = NumberFormat.getCurrencyInstance().apply {
-        currency = Currency.getInstance("EUR")
+    val currentContext = LocalContext.current
+    val activity = currentContext as ComponentActivity
+    val bluetoothManager = remember { BluetoothManager(currentContext) }
+
+    val permissions = arrayOf(
+        Manifest.permission.BLUETOOTH_CONNECT,
+        Manifest.permission.BLUETOOTH_SCAN,
+        Manifest.permission.ACCESS_FINE_LOCATION
+    )
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissionsMap ->
+        if (permissionsMap.all { it.value }) {
+            // All permissions granted
+            viewModel.handlePayment(walletViewModel, viewModel.totalAmount)
+            bluetoothManager.sendSignal('O')
+            onConfirm()
+        } else {
+            Toast.makeText(currentContext, "Permissions required for Bluetooth", Toast.LENGTH_SHORT).show()
+        }
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Confirm ${if (context == PaymentContext.ADD_FUNDS) "Funds Addition" else "Payment"}") },
+        title = { Text("Confirm Payment") },
         text = {
             Column {
-                Text("Confirm ${if (context == PaymentContext.ADD_FUNDS) "adding" else "payment of"} ${currencyFormat.format(amount)}?")
-                if (context == PaymentContext.PURCHASE && walletViewModel.balance < amount) {
+                Text("Confirm payment of ${NumberFormat.getCurrencyInstance().format(viewModel.totalAmount)}?")
+                if (walletViewModel.balance < viewModel.totalAmount) {
                     Text("Insufficient funds!", color = Color.Red)
                 }
             }
         },
         confirmButton = {
             Button(
-                onClick = onConfirm,
-                enabled = context != PaymentContext.PURCHASE || walletViewModel.balance >= amount,
+                onClick = {
+                    if (permissions.all {
+                            ContextCompat.checkSelfPermission(
+                                currentContext,
+                                it
+                            ) == PackageManager.PERMISSION_GRANTED
+                        }) {
+                        viewModel.handlePayment(walletViewModel, viewModel.totalAmount)
+                        bluetoothManager.sendSignal('O')
+                        onConfirm()
+                    } else {
+                        permissionLauncher.launch(permissions)
+                    }
+                },
+                enabled = walletViewModel.balance >= viewModel.totalAmount,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
             ) {
-                Text("Confirm",
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center
-                )
+                Text("Confirm")
             }
         },
-
         dismissButton = {
             Button(
                 onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.LightGray
-                )
+                colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray)
             ) {
-                Text("Cancel",
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center,
-                    color = Color.DarkGray
-                )
+                Text("Cancel", color = Color.DarkGray)
             }
         }
     )

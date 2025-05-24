@@ -60,10 +60,23 @@ class PaymentViewModel : ViewModel() {
     var cvc by mutableStateOf("")
     var paymentState by mutableStateOf<PaymentState>(PaymentState.Entry)
     var totalAmount by mutableStateOf(0.0)
+    var isSending by mutableStateOf(false)
 
     // Existing properties
     var paymentContext by mutableStateOf(PaymentContext.PURCHASE)
     var amountToAdd by mutableStateOf("")
+
+    fun handlePayment(walletViewModel: WalletViewModel, amount: Double) {
+        // Changed from deductBalance to deductAmount
+        val success = walletViewModel.deductAmount(amount)
+
+        // Update payment state based on success
+        paymentState = if (success) {
+            PaymentState.Success("BLUETOOTH-${System.currentTimeMillis()}")
+        } else {
+            PaymentState.Error("Payment deduction failed")
+        }
+    }
 
     // Keep the existing sealed class and functions
     sealed class PaymentState {
@@ -485,4 +498,3 @@ fun CardForm(
         }
     }
 }
-

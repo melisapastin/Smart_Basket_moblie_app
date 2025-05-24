@@ -69,8 +69,7 @@ fun MenuScreen(
                 .height(80.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
         ){
-                Text("My Wallet", fontSize = 20.sp)
+            Text("My Wallet", fontSize = 20.sp)
         }
     }
 }
-
