@@ -21,18 +21,57 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlin.math.min
 
-// Shopping Trends Screen
+// Add this new ViewModel for shopping trends
+class ShoppingTrendsViewModel : ViewModel() {
+    // Mock purchase history data
+    private val mockPurchaseHistory = listOf(
+        BasketItem("Coca-Cola Can", 1.5, 8, "Drink"),
+        BasketItem("Lay's Classic Chips", 2.0, 5, "Snack"),
+        BasketItem("Nutella Jar", 4.5, 3, "Spread"),
+        BasketItem("Colgate Toothpaste", 3.0, 2, "Hygiene"),
+        BasketItem("Red Apple", 0.8, 10, "Fruit"),
+        BasketItem("Coca-Cola Can", 1.5, 6, "Drink"),
+        BasketItem("Lay's Classic Chips", 2.0, 4, "Snack"),
+        BasketItem("Red Apple", 0.8, 8, "Fruit"),
+        BasketItem("Nutella Jar", 4.5, 2, "Spread"),
+        BasketItem("Colgate Toothpaste", 3.0, 1, "Hygiene")
+    )
+
+    fun getTopItemsByQuantity(): List<Pair<String, Int>> {
+        return mockPurchaseHistory.groupBy { it.name }
+            .mapValues { (_, items) -> items.sumOf { it.quantity } }
+            .entries.sortedByDescending { it.value }
+            .take(5)
+            .map { it.key to it.value }
+    }
+
+    fun getTopItemsBySales(): List<Pair<String, Double>> {
+        return mockPurchaseHistory.groupBy { it.name }
+            .mapValues { (_, items) -> items.sumOf { it.price * it.quantity } }
+            .entries.sortedByDescending { it.value }
+            .take(5)
+            .map { it.key to it.value }
+    }
+
+    fun getCategoryDistribution(): Map<String, Double> {
+        return mockPurchaseHistory.groupBy { it.category }
+            .mapValues { (_, items) -> items.sumOf { it.price * it.quantity } }
+    }
+}
+
+// Update the ShoppingTrendsScreen composable
 @Composable
 fun ShoppingTrendsScreen(
     onBack: () -> Unit,
-    receiptViewModel: ReceiptViewModel = viewModel()
+    trendsViewModel: ShoppingTrendsViewModel = viewModel() // Use the new ViewModel
 ) {
-    val topByQuantity = receiptViewModel.getTopItemsByQuantity()
-    val topBySales = receiptViewModel.getTopItemsBySales()
-    val categoryDistribution = receiptViewModel.getCategoryDistribution()
+    val topByQuantity = trendsViewModel.getTopItemsByQuantity()
+    val topBySales = trendsViewModel.getTopItemsBySales()
+    val categoryDistribution = trendsViewModel.getCategoryDistribution()
 
     Column(
         modifier = Modifier
@@ -49,7 +88,7 @@ fun ShoppingTrendsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 1. Vertical Bar Chart - Most Purchased Items by Quantity
+        // Rest of the screen remains the same, using the mock data from trendsViewModel
         Text(
             text = "Top Items by Quantity",
             style = MaterialTheme.typography.headlineSmall,
@@ -64,7 +103,6 @@ fun ShoppingTrendsScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // 2. Pie Chart - Sales by Category
         Text(
             text = "Sales by Category",
             style = MaterialTheme.typography.headlineSmall,
@@ -80,7 +118,6 @@ fun ShoppingTrendsScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // 3. Horizontal Bar Chart - Top Items by Sales
         Text(
             text = "Top Items by Sales",
             style = MaterialTheme.typography.headlineSmall,

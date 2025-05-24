@@ -19,13 +19,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material.icons.filled.Done
 
-// ShoppingListScreen.kt
 @Composable
 fun ShoppingListScreen(
     shoppingListViewModel: ShoppingListViewModel,
     onBack: () -> Unit
 ) {
     val receiptViewModel: ReceiptViewModel = viewModel()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -40,78 +40,125 @@ fun ShoppingListScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedTextField(
-                value = shoppingListViewModel.newItemName.value,  // Fixed
-                onValueChange = { shoppingListViewModel.newItemName.value = it },
-                modifier = Modifier.weight(1f),
-                label = { Text("Item name") }
-            )
+        // Cloud products section
+        Text("Available Products", style = MaterialTheme.typography.headlineSmall)
 
-            Spacer(modifier = Modifier.width(8.dp))
+        when {
+            shoppingListViewModel.isLoading -> {
+                CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
+            }
 
-            OutlinedTextField(
-                value = shoppingListViewModel.newItemQuantity.value,
-                onValueChange = { newValue ->
-                    if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\$"))) {
-                        shoppingListViewModel.newItemQuantity.value = newValue // Fixed variable name
+            shoppingListViewModel.error != null -> {
+                Text("Error: ${shoppingListViewModel.error}", color = Color.Red)
+            }
+
+            else -> {
+                LazyColumn {
+                    items(shoppingListViewModel.cloudProducts) { product ->
+                        var quantity by remember { mutableStateOf("1") }
+
+                        ProductItem(
+                            product = product,
+                            quantity = quantity,
+                            onQuantityChange = { quantity = it },
+                            onAddClick = {
+                                val qty = quantity.toIntOrNull() ?: 1
+                                shoppingListViewModel.addCloudProduct(product, qty)
+                            }
+                        )
                     }
-                },
-                modifier = Modifier.width(80.dp),
-                label = { Text("Qty") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-            )
-
-            IconButton(
-                onClick = { shoppingListViewModel.addItem() }
-            ) {
-                Icon(Icons.Default.Add, "Add item")
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Current shopping list
+        Text("Your Shopping List", style = MaterialTheme.typography.headlineSmall)
         LazyColumn {
-            items(
-                shoppingListViewModel.shoppingList.value,  // Fixed
-                key = { item -> item.id }
-            )  { item ->
-                // Check if basket contains this item with sufficient quantity
-                val isInBasket = receiptViewModel.items.any { basketItem ->
-                    basketItem.name == item.name &&
-                            basketItem.quantity >= item.quantity
-                }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (isInBasket) {
-                        Icon(
-                            imageVector = Icons.Default.Done,
-                            contentDescription = "In basket",
-                            tint = Color.Green,
-                            modifier = Modifier.padding(end = 8.dp)
-                        )
-                    }
-                    Text(
-                        text = "${item.quantity}x ${item.name}",
-                        modifier = Modifier.weight(1f),
-                        color = if (isInBasket) Color.Green else Color.Unspecified
-                    )
-                    IconButton(
-                        onClick = { shoppingListViewModel.removeItem(item.id) }  // Fixed
-                    ) {
-                        Icon(Icons.Default.Delete, "Delete", tint = Color.Red)
-                    }
-                }
+            items(shoppingListViewModel.shoppingList.value) { item ->
+                ShoppingListItemRow(
+                    item = item,
+                    onRemove = { shoppingListViewModel.removeItem(it) },
+                    receiptItems = receiptViewModel.items // Pass real basket items here
+                )
                 Divider(color = Color.LightGray)
             }
         }
+    }
+}
+@Composable
+fun ShoppingListItemRow(
+    item: ShoppingListItem,
+    onRemove: (Int) -> Unit,
+    receiptItems: List<BasketItem>
+) {
+    val isInBasket = receiptItems.any { basketItem ->
+        basketItem.name == item.name && basketItem.quantity >= item.quantity
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (isInBasket) {
+            Icon(
+                imageVector = Icons.Default.Done,
+                contentDescription = "In basket",
+                tint = Color.Green,
+                modifier = Modifier.padding(end = 8.dp)
+            )
+        }
+        Text(
+            text = "${item.quantity}x ${item.name}",
+            modifier = Modifier.weight(1f),
+            color = if (isInBasket) Color.Green else Color.Unspecified
+        )
+        IconButton(
+            onClick = { onRemove(item.id) }
+        ) {
+            Icon(Icons.Default.Delete, "Delete", tint = Color.Red)
+        }
+    }
+}
+
+@Composable
+fun ProductItem(
+    product: Product,
+    quantity: String,
+    onQuantityChange: (String) -> Unit,
+    onAddClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(product.name, style = MaterialTheme.typography.bodyLarge)
+            Text("€${"%.2f".format(product.price)}", color = Color.Gray)
+        }
+
+        OutlinedTextField(
+            value = quantity,
+            onValueChange = {
+                if (it.isEmpty() || it.matches(Regex("^\\d*\$"))) {
+                    onQuantityChange(it)
+                }
+            },
+            modifier = Modifier.width(80.dp),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+        )
+
+        Button(
+            onClick = onAddClick,
+            modifier = Modifier.padding(start = 8.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+        ) {
+        Text("Add")
+    }
     }
 }

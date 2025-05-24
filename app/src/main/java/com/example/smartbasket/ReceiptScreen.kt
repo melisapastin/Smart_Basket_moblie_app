@@ -56,7 +56,14 @@ data class Product(
     val category: String,
     val price: Double,
     val weight: Int
-)
+) {
+    fun toBasketItem(quantity: Int) = BasketItem(
+        name = name,
+        price = price,
+        quantity = quantity,
+        category = category
+    )
+}
 
 // ViewModel to hold items
 class ReceiptViewModel : ViewModel() {

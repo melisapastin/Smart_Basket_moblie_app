@@ -246,7 +246,11 @@ fun PaymentStatus(viewModel: PaymentViewModel, total: Double, walletViewModel: W
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
                         ) {
                             Text(
-                                "Submit Payment",
+                                // Change this line to show different text based on context
+                                when(context) {
+                                    PaymentContext.ADD_FUNDS -> "Add Funds"
+                                    else -> "Submit Payment"
+                                },
                                 modifier = Modifier.fillMaxWidth(),
                                 textAlign = TextAlign.Center
                             )
@@ -452,49 +456,5 @@ fun CardForm(
             )
         }
 
-        // Add buttons for ADD_FUNDS context
-        if (context == PaymentContext.ADD_FUNDS) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Add Funds Button
-                Button(
-                    onClick = { viewModel.processPayment(walletViewModel) },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(60.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF4CAF50)
-                    )
-                ) {
-                    Text(
-                        "Add funds",
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center
-                    )
-                }
-
-                // Cancel Button
-                Button(
-                    onClick = { viewModel.cancelPayment() },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(60.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.LightGray
-                    )
-                ) {
-                    Text(
-                        "Cancel",
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center,
-                        color = Color.DarkGray
-                    )
-                }
-            }
-        }
     }
 }
