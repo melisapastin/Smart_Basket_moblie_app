@@ -273,7 +273,6 @@ private fun DrawScope.drawPieSlice(
 }
 
 // Horizontal Bar Chart Component
-// Horizontal Bar Chart Component
 @Composable
 fun HorizontalBarChart(data: List<Pair<String, Double>>, modifier: Modifier = Modifier) {
     val maxValue = data.maxOfOrNull { it.second } ?: 1.0
@@ -284,54 +283,51 @@ fun HorizontalBarChart(data: List<Pair<String, Double>>, modifier: Modifier = Mo
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         data.forEachIndexed { index, (label, value) ->
-            Box(
+            val widthPercentage = (value / maxValue).coerceIn(0.0, 1.0)
+
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(30.dp)
+                    .height(30.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Calculate width percentage relative to max value
-                val widthPercentage = (value / maxValue).coerceIn(0.0, 1.0)
+                // Fixed-width label
+                Text(
+                    text = label,
+                    modifier = Modifier.width(90.dp),
+                    fontSize = 14.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
 
-                Row(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalAlignment = Alignment.CenterVertically
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Bar area
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(Color.LightGray, RoundedCornerShape(4.dp))
                 ) {
-                    Text(
-                        text = label,
-                        modifier = Modifier.width(100.dp),
-                        fontSize = 14.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // Bar background
                     Box(
                         modifier = Modifier
-                            .weight(1f)
+                            .fillMaxWidth(fraction = widthPercentage.toFloat())
                             .fillMaxHeight()
-                            .background(Color.LightGray, RoundedCornerShape(4.dp))
-                    ) {
-                        // Actual colored bar
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(fraction = widthPercentage.toFloat())
-                                .fillMaxHeight()
-                                .background(
-                                    color = colors[index % colors.size],
-                                    shape = RoundedCornerShape(4.dp)
-                                )
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Text(
-                        text = "€${"%.2f".format(value)}",
-                        fontSize = 14.sp
+                            .background(
+                                color = colors[index % colors.size],
+                                shape = RoundedCornerShape(4.dp)
+                            )
                     )
                 }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Fixed-width value text
+                Text(
+                    text = "€${"%.2f".format(value)}",
+                    modifier = Modifier.width(60.dp),
+                    fontSize = 14.sp
+                )
             }
         }
     }
