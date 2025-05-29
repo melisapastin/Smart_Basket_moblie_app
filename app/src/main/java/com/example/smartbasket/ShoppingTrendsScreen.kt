@@ -29,16 +29,18 @@ import kotlin.math.min
 class ShoppingTrendsViewModel : ViewModel() {
     // Mock purchase history data
     private val mockPurchaseHistory = listOf(
-        BasketItem("Coca-Cola Can", 1.5, 8, "Drink"),
-        BasketItem("Lay's Classic Chips", 2.0, 5, "Snack"),
-        BasketItem("Nutella Jar", 4.5, 3, "Spread"),
-        BasketItem("Colgate Toothpaste", 3.0, 2, "Hygiene"),
-        BasketItem("Red Apple", 0.8, 10, "Fruit"),
         BasketItem("Coca-Cola Can", 1.5, 6, "Drink"),
-        BasketItem("Lay's Classic Chips", 2.0, 4, "Snack"),
-        BasketItem("Red Apple", 0.8, 8, "Fruit"),
-        BasketItem("Nutella Jar", 4.5, 2, "Spread"),
-        BasketItem("Colgate Toothpaste", 3.0, 1, "Hygiene")
+        BasketItem("Lay's Classic Chips", 2.0, 3, "Snack"),
+        BasketItem("Fares Tea - Merisoare si Afine", 1.2, 3, "Tea"),
+        BasketItem("Snickers Chocolate Bar", 1.0, 2, "Snack"),
+        BasketItem("Red Apple", 0.8, 10, "Fruit"),
+        BasketItem("Zuzu Milk Carton", 1.8, 2, "Dairy"),
+        BasketItem("Coca-Cola Can", 1.5, 5, "Drink"),
+        BasketItem("Lay's Classic Chips", 2.0, 2, "Snack"),
+        BasketItem("Fares Tea - Merisoare si Afine", 1.2, 4, "Tea"),
+        BasketItem("Snickers Chocolate Bar", 1.0, 3, "Snack"),
+        BasketItem("Red Apple", 0.8, 14, "Fruit"),
+        BasketItem("Zuzu Milk Carton", 1.8, 4, "Dairy")
     )
 
     fun getTopItemsByQuantity(): List<Pair<String, Int>> {
@@ -176,7 +178,7 @@ fun VerticalBarChart(data: List<Pair<String, Int>>, modifier: Modifier = Modifie
 }
 
 // Pie Chart Component
-// Pie Chart Component
+// Pie Chart Component (Updated to fix color matching)
 @Composable
 fun PieChart(
     data: List<Double>,
@@ -185,6 +187,14 @@ fun PieChart(
 ) {
     val total = data.sum()
     if (total <= 0) return  // Handle empty data case
+
+    // Create pairs of labels and values
+    val categoryData = labels.zip(data).map { (label, value) ->
+        Pair(label, value)
+    }
+
+    // Sort by percentage descending (largest first)
+    val sortedCategoryData = categoryData.sortedByDescending { it.second }
 
     val colors = listOf(Color(0xFF4CAF50), Color(0xFF2196F3), Color(0xFF9C27B0), Color(0xFFFF9800), Color(0xFFE91E63), Color(0xFFFFC107))
     var startAngle = -90f  // Start at 12 o'clock
@@ -207,7 +217,8 @@ fun PieChart(
                     (size.height - diameter) / 2
                 )
 
-                data.forEachIndexed { index, value ->
+                // Draw slices in sorted order
+                sortedCategoryData.forEachIndexed { index, (_, value) ->
                     val sweepAngle = (value / total * 360).toFloat()
                     drawPieSlice(
                         color = colors[index % colors.size],
@@ -222,7 +233,8 @@ fun PieChart(
         }
 
         Column(modifier = Modifier.weight(1f)) {
-            labels.forEachIndexed { index, label ->
+            // Legend uses same sorted order
+            sortedCategoryData.forEachIndexed { index, (label, value) ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(vertical = 4.dp)
@@ -233,7 +245,7 @@ fun PieChart(
                             .background(colors[index % colors.size])
                     )
                     Text(
-                        text = "$label (${"%.1f".format(data[index]/total*100)}%)",
+                        text = "$label (${"%.1f".format(value/total*100)}%)",
                         modifier = Modifier.padding(start = 8.dp),
                         fontSize = 14.sp
                     )

@@ -40,53 +40,93 @@ fun ShoppingListScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Cloud products section
-        Text("Available Products", style = MaterialTheme.typography.headlineSmall)
+        // Top half: Available products
+        Column(
+            modifier = Modifier
+                .weight(0.7f)
+                .fillMaxWidth()
+        ) {
+            Text("Available Products", style = MaterialTheme.typography.headlineSmall)
+            Spacer(modifier = Modifier.height(8.dp))
 
-        when {
-            shoppingListViewModel.isLoading -> {
-                CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
-            }
+            when {
+                shoppingListViewModel.isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
 
-            shoppingListViewModel.error != null -> {
-                Text("Error: ${shoppingListViewModel.error}", color = Color.Red)
-            }
+                shoppingListViewModel.error != null -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("Error: ${shoppingListViewModel.error}", color = Color.Red)
+                    }
+                }
 
-            else -> {
-                LazyColumn {
-                    items(shoppingListViewModel.cloudProducts) { product ->
-                        var quantity by remember { mutableStateOf("1") }
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(shoppingListViewModel.cloudProducts) { product ->
+                            var quantity by remember { mutableStateOf("1") }
 
-                        ProductItem(
-                            product = product,
-                            quantity = quantity,
-                            onQuantityChange = { quantity = it },
-                            onAddClick = {
-                                val qty = quantity.toIntOrNull() ?: 1
-                                shoppingListViewModel.addCloudProduct(product, qty)
-                            }
-                        )
+                            ProductItem(
+                                product = product,
+                                quantity = quantity,
+                                onQuantityChange = { quantity = it },
+                                onAddClick = {
+                                    val qty = quantity.toIntOrNull() ?: 1
+                                    shoppingListViewModel.addCloudProduct(product, qty)
+                                }
+                            )
+                            Divider(color = Color.LightGray)
+                        }
                     }
                 }
             }
         }
 
+        // Horizontal divider
+        Divider(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .padding(vertical = 8.dp),
+            color = Color.Gray
+        )
+
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Current shopping list
-        Text("Your Shopping List", style = MaterialTheme.typography.headlineSmall)
-        LazyColumn {
-            items(shoppingListViewModel.shoppingList.value) { item ->
-                ShoppingListItemRow(
-                    item = item,
-                    onRemove = { shoppingListViewModel.removeItem(it) },
-                    receiptItems = receiptViewModel.items // Pass real basket items here
-                )
-                Divider(color = Color.LightGray)
+        // Bottom half: Shopping list
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+        ) {
+            Text("Your Shopping List", style = MaterialTheme.typography.headlineSmall)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(shoppingListViewModel.shoppingList.value) { item ->
+                    ShoppingListItemRow(
+                        item = item,
+                        onRemove = { shoppingListViewModel.removeItem(it) },
+                        receiptItems = receiptViewModel.items
+                    )
+                    Divider(color = Color.LightGray)
+                }
             }
         }
     }
 }
+
 @Composable
 fun ShoppingListItemRow(
     item: ShoppingListItem,

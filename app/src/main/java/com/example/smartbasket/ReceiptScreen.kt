@@ -70,6 +70,10 @@ class ReceiptViewModel : ViewModel() {
     var items by mutableStateOf<List<BasketItem>>(emptyList())
         private set
 
+    fun clearItems() {
+        items = emptyList()
+    }
+
     init {
         fetchCloudData()
     }
@@ -154,6 +158,15 @@ fun ReceiptScreen(
     val paymentViewModel: PaymentViewModel = viewModel()
     val walletViewModel: WalletViewModel = viewModel() // Add this line
     val context = LocalContext.current
+
+    ///////////// EMPTIES THE LIST AFTER PAYMENT
+    LaunchedEffect(paymentViewModel.paymentState) {
+        if (paymentViewModel.paymentState is PaymentViewModel.PaymentState.Success &&
+            paymentViewModel.paymentContext == PaymentContext.PURCHASE) {
+            receiptViewModel.clearItems()
+        }
+    }
+    ///////////////////////////////////////////
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Button(
